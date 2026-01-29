@@ -136,3 +136,78 @@ Rate limiting & logging
 
 Sri Harshitha
 B.Tech – Computer Science & Engineering
+
+High-Level Architecture (Concept)
+
+🧠 System has 5 main components:
+
+Client (User / Scammer)
+
+FastAPI Backend
+
+Scam Detection Engine
+
+Conversation Memory
+
+AI Agent (Ollama LLM)
+
+🧱 Architecture Diagram
+
+┌──────────────┐
+│   Client     │
+│ (Swagger /   │
+│  API Caller) │
+└──────┬───────┘
+       │ HTTP POST /message
+       │ (Authorization Header)
+       ▼
+┌──────────────────────────┐
+│        FastAPI App       │
+│        (main.py)         │
+│                          │
+│  ┌────────────────────┐ │
+│  │ Scam Detection     │ │
+│  │ - Keywords         │ │
+│  │ - Regex Patterns   │ │
+│  └─────────┬──────────┘ │
+│            │             │
+│            ▼             │
+│  ┌────────────────────┐ │
+│  │ Conversation       │ │
+│  │ Memory Store       │ │
+│  │ (In-Memory Dict)   │ │
+│  └─────────┬──────────┘ │
+│            │             │
+│            ▼             │
+│  ┌────────────────────┐ │
+│  │ Intelligence       │ │
+│  │ Extraction         │ │
+│  │ - UPI IDs          │ │
+│  │ - Bank Numbers     │ │
+│  │ - URLs             │ │
+│  └─────────┬──────────┘ │
+│            │             │
+│            ▼             │
+│  ┌────────────────────┐ │
+│  │ AI Agent           │ │
+│  │ (Ollama + LLM)     │ │
+│  │ Natural Replies   │ │
+│  └────────────────────┘ │
+│                          │
+└───────────┬──────────────┘
+            │ JSON Response
+            ▼
+┌──────────────────────────┐
+│  Client Receives Reply   │
+│  + Intelligence Data     │
+└──────────────────────────┘
+
+## 🏗️ System Architecture
+The Agentic Honeypot system follows a modular architecture consisting of:
+- Client layer (Swagger UI / API consumer)
+- FastAPI backend
+- Scam detection & intelligence extraction engine
+- In-memory conversation store
+- AI conversational agent (Ollama LLM)
+
+This design enables scalable scam engagement while preserving conversation context.
