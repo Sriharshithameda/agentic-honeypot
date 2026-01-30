@@ -7,7 +7,7 @@ import re
 import time
 import ollama
 
-app = FastAPI(title="Agentic Honeypot – AI Scam Detection")
+app = FastAPI()
 
 API_KEY = "honeypot_12345_secure"
 api_key_header = APIKeyHeader(name="Authorization")
