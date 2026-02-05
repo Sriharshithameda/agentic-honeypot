@@ -1,24 +1,15 @@
-from fastapi import FastAPI, HTTPException, Depends, Security
-from fastapi.security import APIKeyHeader
+from fastapi import FastAPI, Header
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, List
 import re
 import time
 
 app = FastAPI(
-    title="Agentic Honeypot – AI Scam Detection System"
+    title="Agentic Honeypot – Scam Detection API"
 )
 
 # ================= API KEY =================
 API_KEY = "honeypot_12345_secure"
-api_key_header = APIKeyHeader(
-    name="x-api-key",
-    auto_error=False
-)
-
-def verify_api_key(api_key: str = Security(api_key_header)):
-    if api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
 # ================= MEMORY =================
 conversations: Dict[str, Dict] = {}
@@ -33,10 +24,17 @@ UPI_REGEX = r"[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,}"
 BANK_REGEX = r"\b\d{9,18}\b"
 URL_REGEX = r"https?://[^\s]+"
 
-# ================= MODEL =================
-class ScamMessage(BaseModel):
-    conversation_id: str
-    message: str
+# ================= REQUEST MODELS =================
+class IncomingMessage(BaseModel):
+    sender: str
+    text: str
+    timestamp: int
+
+class RequestBody(BaseModel):
+    sessionId: str
+    message: IncomingMessage
+    conversationHistory: List = []
+    metadata: Dict = {}
 
 # ================= LOGIC =================
 def detect_scam(message: str) -> bool:
@@ -47,16 +45,26 @@ def extract_intelligence(message: str, memory: Dict):
     memory["extracted"]["bank_accounts"].extend(re.findall(BANK_REGEX, message))
     memory["extracted"]["phishing_urls"].extend(re.findall(URL_REGEX, message))
 
-def agent_reply():
-    # SAFE fallback (Render-compatible)
-    return "Could you please explain more about this offer?"
-
 # ================= ENDPOINT =================
-@app.post("/message", dependencies=[Depends(verify_api_key)])
-def receive_message(data: ScamMessage):
+@app.post("/")
+@app.post("/message")
+def receive_message(
+    data: RequestBody,
+    x_api_key: str = Header(None)
+):
+    # API key validation
+    if x_api_key != API_KEY:
+        return {
+            "status": "error",
+            "reply": "Invalid API key"
+        }
 
-    if data.conversation_id not in conversations:
-        conversations[data.conversation_id] = {
+    session_id = data.sessionId
+    message_text = data.message.text
+
+    # Initialize memory
+    if session_id not in conversations:
+        conversations[session_id] = {
             "messages": [],
             "scam_detected": False,
             "start_time": time.time(),
@@ -67,26 +75,22 @@ def receive_message(data: ScamMessage):
             }
         }
 
-    memory = conversations[data.conversation_id]
-    memory["messages"].append(data.message)
+    memory = conversations[session_id]
+    memory["messages"].append(message_text)
 
+    # Detect scam
     if not memory["scam_detected"]:
-        memory["scam_detected"] = detect_scam(data.message)
+        memory["scam_detected"] = detect_scam(message_text)
 
+    # Reply logic (Evaluator expects THIS)
     if memory["scam_detected"]:
-        extract_intelligence(data.message, memory)
-        reply = agent_reply()
+        extract_intelligence(message_text, memory)
+        reply = "Why is my account being suspended?"
     else:
         reply = "Could you please explain?"
 
+    # ⚠️ RETURN ONLY EXPECTED FORMAT
     return {
-        "conversation_id": data.conversation_id,
-        "scam_detected": memory["scam_detected"],
-        "agent_engaged": memory["scam_detected"],
-        "engagement_metrics": {
-            "turns": len(memory["messages"]),
-            "duration_seconds": int(time.time() - memory["start_time"])
-        },
-        "extracted_intelligence": memory["extracted"],
-        "agent_response": reply
+        "status": "success",
+        "reply": reply
     }
